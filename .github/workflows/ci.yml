@@ -72,3 +72,7 @@ jobs:
           DB_NAME: devops_db
         run: |
           python -m pytest -v
+
+      - name: Build Docker image
+        run: |
+          docker build -t python-devops-project:latest .
