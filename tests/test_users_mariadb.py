@@ -1,0 +1,81 @@
+import os
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.db.database import Base, get_db
+from app.main import app
+
+
+DB_USER = os.getenv("DB_USER", "devuser")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "devpassword")
+DB_NAME = os.getenv("DB_NAME", "devops_db")
+
+# When pytest runs on your host machine,
+# MariaDB is exposed on localhost:3307.
+DB_HOST = os.getenv("TEST_DB_HOST", "localhost")
+DB_PORT = os.getenv("TEST_DB_PORT", "3307")
+
+DATABASE_URL = (
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}"
+    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+engine = create_engine(DATABASE_URL)
+
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_get_db
+
+client = TestClient(app)
+
+
+def test_mariadb_create_and_get_user():
+    # Create user
+    create_response = client.post(
+        "/users",
+        json={
+            "name": "MariaDB Test User",
+            "email": "mariadb_test@example.com",
+        },
+    )
+
+    assert create_response.status_code == 200
+
+    created_user = create_response.json()
+
+    assert created_user["name"] == "MariaDB Test User"
+    assert created_user["email"] == "mariadb_test@example.com"
+    assert "id" in created_user
+
+    user_id = created_user["id"]
+
+    # Get user from MariaDB through API
+    get_response = client.get(f"/users/{user_id}")
+
+    assert get_response.status_code == 200
+
+    fetched_user = get_response.json()
+
+    assert fetched_user["id"] == user_id
+    assert fetched_user["name"] == "MariaDB Test User"
+    assert fetched_user["email"] == "mariadb_test@example.com"
+
+    # Cleanup
+    delete_response = client.delete(f"/users/{user_id}")
+
+    assert delete_response.status_code == 200
