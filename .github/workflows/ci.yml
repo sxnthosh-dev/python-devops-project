@@ -74,8 +74,8 @@ jobs:
 
       - name: Run tests
         env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 33077
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 3307
           DB_USER: devuser
           DB_PASSWORD: devpassword
           DB_NAME: devops_db
