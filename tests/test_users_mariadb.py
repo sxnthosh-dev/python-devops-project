@@ -12,8 +12,6 @@ DB_USER = os.getenv("DB_USER", "devuser")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "devpassword")
 DB_NAME = os.getenv("DB_NAME", "devops_db")
 
-# When pytest runs on your host machine,
-# MariaDB is exposed on localhost:3307.
 DB_HOST = os.getenv("TEST_DB_HOST", "localhost")
 DB_PORT = os.getenv("TEST_DB_PORT", "3307")
 
@@ -39,43 +37,45 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-
 def test_mariadb_create_and_get_user():
-    # Create user
-    create_response = client.post(
-        "/users",
-        json={
-            "name": "MariaDB Test User",
-            "email": "mariadb_test@example.com",
-        },
-    )
+    # Apply MariaDB dependency override only for this test.
+    app.dependency_overrides[get_db] = override_get_db
 
-    assert create_response.status_code == 200
+    try:
+        client = TestClient(app)
 
-    created_user = create_response.json()
+        create_response = client.post(
+            "/users",
+            json={
+                "name": "MariaDB Test User",
+                "email": "mariadb_test@example.com",
+            },
+        )
 
-    assert created_user["name"] == "MariaDB Test User"
-    assert created_user["email"] == "mariadb_test@example.com"
-    assert "id" in created_user
+        assert create_response.status_code == 200
 
-    user_id = created_user["id"]
+        created_user = create_response.json()
 
-    # Get user from MariaDB through API
-    get_response = client.get(f"/users/{user_id}")
+        assert created_user["name"] == "MariaDB Test User"
+        assert created_user["email"] == "mariadb_test@example.com"
+        assert "id" in created_user
 
-    assert get_response.status_code == 200
+        user_id = created_user["id"]
 
-    fetched_user = get_response.json()
+        get_response = client.get(f"/users/{user_id}")
 
-    assert fetched_user["id"] == user_id
-    assert fetched_user["name"] == "MariaDB Test User"
-    assert fetched_user["email"] == "mariadb_test@example.com"
+        assert get_response.status_code == 200
 
-    # Cleanup
-    delete_response = client.delete(f"/users/{user_id}")
+        fetched_user = get_response.json()
 
-    assert delete_response.status_code == 200
+        assert fetched_user["id"] == user_id
+        assert fetched_user["name"] == "MariaDB Test User"
+        assert fetched_user["email"] == "mariadb_test@example.com"
+
+        delete_response = client.delete(f"/users/{user_id}")
+
+        assert delete_response.status_code == 200
+
+    finally:
+        # Important: don't leak the MariaDB override into other tests.
+        app.dependency_overrides.clear()

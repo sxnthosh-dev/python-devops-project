@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -6,7 +7,6 @@ from sqlalchemy.pool import StaticPool
 from app.db.database import Base, get_db
 from app.main import app
 
-# Use an in-memory SQLite database for fast, isolated testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -18,20 +18,27 @@ TestingSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )
 
-Base.metadata.create_all(bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def setup_and_teardown_db():
+    """Create fresh tables for each test and clear them afterward."""
+    Base.metadata.create_all(bind=engine)
+    
+    db = TestingSessionLocal()
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    
+    yield
+    
+    Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.clear()
 
 
 def test_create_user():
@@ -52,7 +59,6 @@ def test_get_users():
 
 
 def test_get_user_by_id():
-    # First create a user to fetch
     create_res = client.post(
         "/users", json={"name": "Bob Smith", "email": "bob@example.com"}
     )
