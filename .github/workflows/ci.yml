@@ -60,7 +60,17 @@ jobs:
           DB_PASSWORD: devpassword
           DB_NAME: devops_db
         run: |
-          alembic upgrade head
+          python -m alembic upgrade head
+
+      - name: Verify database schema
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_USER: devuser
+          DB_PASSWORD: devpassword
+          DB_NAME: devops_db
+        run: |
+          python -c "import pymysql; c=pymysql.connect(host='127.0.0.1', port=3307, user='devuser', password='devpassword', database='devops_db'); cur=c.cursor(); cur.execute('SHOW TABLES'); print(cur.fetchall()); c.close()"
 
       - name: Run tests
         env:

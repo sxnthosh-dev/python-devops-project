@@ -1,0 +1,86 @@
+[1mdiff --git a/tests/test_users_mariadb.py b/tests/test_users_mariadb.py[m
+[1mindex fba027d..a1599a4 100644[m
+[1m--- a/tests/test_users_mariadb.py[m
+[1m+++ b/tests/test_users_mariadb.py[m
+[36m@@ -12,8 +12,6 @@[m [mDB_USER = os.getenv("DB_USER", "devuser")[m
+ DB_PASSWORD = os.getenv("DB_PASSWORD", "devpassword")[m
+ DB_NAME = os.getenv("DB_NAME", "devops_db")[m
+ [m
+[31m-# When pytest runs on your host machine,[m
+[31m-# MariaDB is exposed on localhost:3307.[m
+ DB_HOST = os.getenv("TEST_DB_HOST", "localhost")[m
+ DB_PORT = os.getenv("TEST_DB_PORT", "3307")[m
+ [m
+[36m@@ -39,43 +37,45 @@[m [mdef override_get_db():[m
+         db.close()[m
+ [m
+ [m
+[31m-app.dependency_overrides[get_db] = override_get_db[m
+[32m+[m[32mdef test_mariadb_create_and_get_user():[m
+[32m+[m[32m    # Apply MariaDB dependency override only for this test.[m
+[32m+[m[32m    app.dependency_overrides[get_db] = override_get_db[m
+ [m
+[31m-client = TestClient(app)[m
+[32m+[m[32m    try:[m
+[32m+[m[32m        client = TestClient(app)[m
+ [m
+[32m+[m[32m        create_response = client.post([m
+[32m+[m[32m            "/users",[m
+[32m+[m[32m            json={[m
+[32m+[m[32m                "name": "MariaDB Test User",[m
+[32m+[m[32m                "email": "mariadb_test@example.com",[m
+[32m+[m[32m            },[m
+[32m+[m[32m        )[m
+ [m
+[31m-def test_mariadb_create_and_get_user():[m
+[31m-    # Create user[m
+[31m-    create_response = client.post([m
+[31m-        "/users",[m
+[31m-        json={[m
+[31m-            "name": "MariaDB Test User",[m
+[31m-            "email": "mariadb_test@example.com",[m
+[31m-        },[m
+[31m-    )[m
+[32m+[m[32m        assert create_response.status_code == 200[m
+ [m
+[31m-    assert create_response.status_code == 200[m
+[32m+[m[32m        created_user = create_response.json()[m
+ [m
+[31m-    created_user = create_response.json()[m
+[32m+[m[32m        assert created_user["name"] == "MariaDB Test User"[m
+[32m+[m[32m        assert created_user["email"] == "mariadb_test@example.com"[m
+[32m+[m[32m        assert "id" in created_user[m
+ [m
+[31m-    assert created_user["name"] == "MariaDB Test User"[m
+[31m-    assert created_user["email"] == "mariadb_test@example.com"[m
+[31m-    assert "id" in created_user[m
+[32m+[m[32m        user_id = created_user["id"][m
+ [m
+[31m-    user_id = created_user["id"][m
+[32m+[m[32m        get_response = client.get(f"/users/{user_id}")[m
+ [m
+[31m-    # Get user from MariaDB through API[m
+[31m-    get_response = client.get(f"/users/{user_id}")[m
+[32m+[m[32m        assert get_response.status_code == 200[m
+ [m
+[31m-    assert get_response.status_code == 200[m
+[32m+[m[32m        fetched_user = get_response.json()[m
+ [m
+[31m-    fetched_user = get_response.json()[m
+[32m+[m[32m        assert fetched_user["id"] == user_id[m
+[32m+[m[32m        assert fetched_user["name"] == "MariaDB Test User"[m
+[32m+[m[32m        assert fetched_user["email"] == "mariadb_test@example.com"[m
+ [m
+[31m-    assert fetched_user["id"] == user_id[m
+[31m-    assert fetched_user["name"] == "MariaDB Test User"[m
+[31m-    assert fetched_user["email"] == "mariadb_test@example.com"[m
+[32m+[m[32m        delete_response = client.delete(f"/users/{user_id}")[m
+ [m
+[31m-    # Cleanup[m
+[31m-    delete_response = client.delete(f"/users/{user_id}")[m
+[32m+[m[32m        assert delete_response.status_code == 200[m
+ [m
+[31m-    assert delete_response.status_code == 200[m
+[32m+[m[32m    finally:[m
+[32m+[m[32m        # Important: don't leak the MariaDB override into other tests.[m
+[32m+[m[32m        app.dependency_overrides.clear()[m
