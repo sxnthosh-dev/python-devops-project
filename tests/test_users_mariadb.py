@@ -38,6 +38,9 @@ def override_get_db():
 
 
 def test_mariadb_create_and_get_user():
+    # Create all tables in the database before running tests
+    Base.metadata.create_all(bind=engine)
+    
     # Apply MariaDB dependency override only for this test.
     app.dependency_overrides[get_db] = override_get_db
 
@@ -77,5 +80,7 @@ def test_mariadb_create_and_get_user():
         assert delete_response.status_code == 200
 
     finally:
+        # Clean up tables after test
+        Base.metadata.drop_all(bind=engine)
         # Important: don't leak the MariaDB override into other tests.
         app.dependency_overrides.clear()
