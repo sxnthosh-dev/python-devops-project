@@ -73,6 +73,15 @@ jobs:
         run: |
           python -m pytest -v
 
-      - name: Build Docker image
-        run: |
-          docker build -t python-devops-project:latest .
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:latest
