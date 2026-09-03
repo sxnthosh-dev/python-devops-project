@@ -26,7 +26,24 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+    deploy:
+      needs: test
+      runs-on: self-hosted
 
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Deploy application
+          run: |
+            cd ~/python-devops-project
+            docker compose pull
+            docker compose up -d
+
+        - name: Verify deployment
+          run: |
+            docker compose ps
+            curl --fail http://localhost:8000/users
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
