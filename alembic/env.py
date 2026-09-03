@@ -9,8 +9,6 @@ from alembic import context
 
 from app.db.database import Base
 
-from app.core.config import settings
-
 from app.db.models import User  # Import all your models here so Alembic detects them
 
 config = context.config
@@ -23,14 +21,26 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-db_url = os.getenv("DATABASE_URL") or settings.database_url
-config.set_main_option("sqlalchemy.url", db_url)
+db_url = os.getenv("DATABASE_URL")
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 #target_metadata = None
+if not db_url:
+    db_user = os.getenv("DB_USER", "devuser")
+    db_password = os.getenv("DB_PASSWORD", "devpassword")
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "3306")
+    db_name = os.getenv("DB_NAME", "devops_db")
+
+    db_url = (
+        f"mysql+pymysql://{db_user}:{db_password}"
+        f"@{db_host}:{db_port}/{db_name}"
+    )
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 
