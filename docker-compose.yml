@@ -13,7 +13,7 @@ services:
       - mariadb_data:/var/lib/mysql
 
   api:
-    build: .
+    image: sxnthosh/python-devops-project:latest
     container_name: devops-api
     env_file:
       - .env
