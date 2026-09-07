@@ -100,5 +100,16 @@ jobs:
       - name: Verify deployment
         run: |
           cd /home/noble_numbat/python-devops-project
-          docker compose ps
+
+          for i in {1..30}; do
+            if curl --fail http://localhost:8000/health; then
+              echo "API is ready"
+              break
+            fi
+
+            echo "Waiting for API..."
+            sleep 2
+          done
+
           curl --fail http://localhost:8000/users
+          curl --fail http://localhost:8000/version
