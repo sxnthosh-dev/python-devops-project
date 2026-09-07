@@ -84,8 +84,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:latest
-
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:${{ github.sha }}
   deploy:
     needs: test
     runs-on: self-hosted
@@ -94,8 +95,12 @@ jobs:
       - name: Deploy application
         run: |
           cd /home/noble_numbat/python-devops-project
+         
+          export IMAGE_TAG=${{ github.sha }}
+
           docker compose pull
           docker compose up -d
+
           echo "Running database migrations..."
           docker compose exec -T api alembic upgrade head
 
