@@ -96,3 +96,98 @@ def test_delete_user():
     # Verify user is gone
     get_res = client.get(f"/users/{user_id}")
     assert get_res.status_code == 404
+def test_create_duplicate_email():
+    payload = {
+        "name": "Alice",
+        "email": "alice@example.com",
+    }
+
+    first_response = client.post("/users", json=payload)
+    assert first_response.status_code == 200
+
+    second_response = client.post("/users", json=payload)
+    assert second_response.status_code == 400
+    assert second_response.json()["detail"] == "Email already registered"
+
+
+def test_get_nonexistent_user():
+    response = client.get("/users/9999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+
+def test_update_nonexistent_user():
+    response = client.put(
+        "/users/9999",
+        json={
+            "name": "Nobody",
+            "email": "nobody@example.com",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+
+def test_delete_nonexistent_user():
+    response = client.delete("/users/9999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+
+def test_invalid_email():
+    response = client.post(
+        "/users",
+        json={
+            "name": "Invalid User",
+            "email": "not-an-email",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_name_too_short():
+    response = client.post(
+        "/users",
+        json={
+            "name": "A",
+            "email": "valid@example.com",
+        },
+    )
+
+    assert response.status_code == 422
+
+def test_update_with_duplicate_email():
+    first_response = client.post(
+        "/users",
+        json={
+            "name": "Alice",
+            "email": "alice@example.com",
+        },
+    )
+    assert first_response.status_code == 200
+
+    second_response = client.post(
+        "/users",
+        json={
+            "name": "Bob",
+            "email": "bob@example.com",
+        },
+    )
+    assert second_response.status_code == 200
+
+    bob_id = second_response.json()["id"]
+
+    response = client.put(
+        f"/users/{bob_id}",
+        json={
+            "name": "Bob Updated",
+            "email": "alice@example.com",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Email already registered"
