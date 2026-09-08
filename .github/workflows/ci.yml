@@ -95,6 +95,8 @@ jobs:
 
     steps:
       - name: Deploy application
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           cd /home/noble_numbat/python-devops-project
          
