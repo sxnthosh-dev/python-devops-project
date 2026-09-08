@@ -99,7 +99,9 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           cd /home/noble_numbat/python-devops-project
-         
+          
+          git pull origin main
+
           export IMAGE_TAG=${{ github.sha }}
           export $(grep -v '^#' .env | xargs)
 
