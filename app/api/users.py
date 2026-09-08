@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -22,7 +22,7 @@ def create_user(
 
     if existing_user:
         raise HTTPException(
-            status_code=400,
+            status_code=409,
             detail="Email already registered",
         )
 
@@ -40,8 +40,8 @@ def create_user(
 
 @router.get("", response_model=list[UserResponse])
 def read_users(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     return crud.user.get_users(
@@ -106,7 +106,7 @@ def update_user(
         )
     except IntegrityError:
         raise HTTPException(
-            status_code=400,
+            status_code=409,
             detail="Email already registered",
         )
 
