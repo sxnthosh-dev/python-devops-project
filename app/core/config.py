@@ -6,7 +6,9 @@ load_dotenv()
 
 class Settings:
     DB_USER = os.getenv("DB_USER", "devuser")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "devpassword")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    if not DB_PASSWORD:
+        raise ValueError("DB_PASSWORD environment variable is not set")
     DB_NAME = os.getenv("DB_NAME", "devops_db")
     DB_HOST = os.getenv("DB_HOST", "db")
     DB_PORT = os.getenv("DB_PORT", "3306")

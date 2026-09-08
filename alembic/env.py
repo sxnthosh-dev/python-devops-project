@@ -30,7 +30,7 @@ db_url = os.getenv("DATABASE_URL")
 #target_metadata = None
 if not db_url:
     db_user = os.getenv("DB_USER", "devuser")
-    db_password = os.getenv("DB_PASSWORD", "devpassword")
+    db_password = os.environ["DB_PASSWORD"]
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "3306")
     db_name = os.getenv("DB_NAME", "devops_db")

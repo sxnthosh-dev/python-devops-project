@@ -3,10 +3,10 @@ services:
     image: mariadb:11
     container_name: devops-mariadb
     environment:
-      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
       MARIADB_DATABASE: devops_db
       MARIADB_USER: devuser
-      MARIADB_PASSWORD: devpassword
+      MARIADB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3307:3306"
     volumes:

@@ -9,7 +9,7 @@ from app.main import app
 
 
 DB_USER = os.getenv("DB_USER", "devuser")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "devpassword")
+DB_PASSWORD = os.environ["DB_PASSWORD"]
 DB_NAME = os.getenv("DB_NAME", "devops_db")
 
 DB_HOST = os.getenv("TEST_DB_HOST", "localhost")

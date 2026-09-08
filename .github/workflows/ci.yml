@@ -16,10 +16,10 @@ jobs:
       mariadb:
         image: mariadb:11
         env:
-          MARIADB_ROOT_PASSWORD: rootpassword
+          MARIADB_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
           MARIADB_DATABASE: devops_db
           MARIADB_USER: devuser
-          MARIADB_PASSWORD: devpassword
+          MARIADB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         ports:
           - 3307:3306
         options: >-
@@ -43,9 +43,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Wait for MariaDB
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           for i in {1..30}; do
-            if python -c "import pymysql; pymysql.connect(host='127.0.0.1', port=3307, user='devuser', password='devpassword', database='devops_db')" 2>/dev/null; then
+            if python -c "import pymysql, os; pymysql.connect(host='127.0.0.1', port=3307, user='devuser', password=os.environ['DB_PASSWORD'], database='devops_db')" 2>/dev/null; then
               echo "MariaDB is ready"
               break
             fi
@@ -58,7 +60,7 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_PORT: 3307
           DB_USER: devuser
-          DB_PASSWORD: devpassword
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: devops_db
         run: |
           alembic upgrade head
@@ -68,7 +70,7 @@ jobs:
           TEST_DB_HOST: 127.0.0.1
           TEST_DB_PORT: 3307
           DB_USER: devuser
-          DB_PASSWORD: devpassword
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: devops_db
         run: |
           python -m pytest -v
