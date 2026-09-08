@@ -105,9 +105,9 @@ def test_create_duplicate_email():
     first_response = client.post("/users", json=payload)
     assert first_response.status_code == 200
 
-    second_response = client.post("/users", json=payload)
-    assert second_response.status_code == 400
-    assert second_response.json()["detail"] == "Email already registered"
+    response = client.post("/users", json=payload)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email already registered"
 
 
 def test_get_nonexistent_user():

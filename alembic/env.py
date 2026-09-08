@@ -12,26 +12,16 @@ from app.db.database import Base
 from app.db.models import User  # Import all your models here so Alembic detects them
 
 config = context.config
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 db_url = os.getenv("DATABASE_URL")
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-#target_metadata = None
 if not db_url:
     db_user = os.getenv("DB_USER", "devuser")
     db_password = os.environ["DB_PASSWORD"]
-    db_host = os.getenv("DB_HOST", "localhost")
+    db_host = os.getenv("DB_HOST", "db")
     db_port = os.getenv("DB_PORT", "3306")
     db_name = os.getenv("DB_NAME", "devops_db")
 
