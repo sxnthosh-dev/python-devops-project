@@ -22,7 +22,7 @@ services:
       - DB_NAME=devops_db
     ports:
       - "8000:8000"
-    depends_index:
+    depends_on:
       - db
 
 volumes:
