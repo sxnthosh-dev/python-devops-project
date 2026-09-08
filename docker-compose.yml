@@ -13,14 +13,17 @@ services:
       - mariadb_data:/var/lib/mysql
 
   api:
-    image: sxnthosh/python-devops-project:${IMAGE_TAG:-latest}
-    container_name: devops-api
-    env_file:
-      - .env
-    depends_on:
-      - db
+    image: ${DOCKERHUB_USERNAME}/python-devops-project:${IMAGE_TAG}
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=devuser
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=devops_db
     ports:
       - "8000:8000"
+    depends_index:
+      - db
 
 volumes:
   mariadb_data:

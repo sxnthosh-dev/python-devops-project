@@ -99,6 +99,7 @@ jobs:
           cd /home/noble_numbat/python-devops-project
          
           export IMAGE_TAG=${{ github.sha }}
+          export $(grep -v '^#' .env | xargs)
 
           docker compose pull
           docker compose up -d
