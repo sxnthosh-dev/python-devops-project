@@ -16,3 +16,4 @@ __pycache__/
 .coverage
 htmlcov/venv/
 venv/
+grafana/grafana.ini
