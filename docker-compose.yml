@@ -1,14 +1,17 @@
 services:
   db:
-    image: mariadb:11
+    image: mariadb:11.2.2
     container_name: devops-mariadb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3307:3306"
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "3307:3306"
+    networks:
+      - internal-network
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
@@ -18,13 +21,14 @@ services:
       retries: 5
 
   web:
-    build: .
+    image: ${DOCKERHUB_USERNAME}/python-devops-project:${IMAGE_TAG}
     container_name: fastapi_app
+    restart: unless-stopped
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       DB_HOST: db
       DB_PORT: 3306
@@ -34,26 +38,35 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - internal-network
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.51.0
     container_name: prometheus
+    restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    restart: always
+    networks:
+      - internal-network
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.0
     container_name: grafana
+    restart: unless-stopped
     ports:
-      - "3000:3000"
-    restart: always
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    networks:
+      - internal-network
+networks:
+  internal-network:
+    driver: bridge
 volumes:
   mariadb_data:
   grafana_data:
