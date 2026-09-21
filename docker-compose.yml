@@ -74,6 +74,13 @@ services:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     networks:
       - internal-network
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    networks:
+      - internal-network
+
 networks:
   internal-network:
     driver: bridge

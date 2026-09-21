@@ -1,15 +1,3 @@
-variable "project_name" {
-  description = "Project name used for Terraform-managed Docker resources"
-  type        = string
-  default     = "python-devops-project"
-}
-
-variable "network_name" {
-  description = "Docker network name"
-  type        = string
-  default     = "python-devops-terraform-network"
-}
-
 variable "db_root_password" {
   description = "MariaDB root password"
   type        = string
@@ -19,17 +7,20 @@ variable "db_root_password" {
 variable "db_name" {
   description = "MariaDB database name"
   type        = string
-  default     = "devops_db"
 }
 
 variable "db_user" {
   description = "MariaDB application user"
   type        = string
-  default     = "devuser"
 }
 
 variable "db_password" {
   description = "MariaDB application password"
   type        = string
   sensitive   = true
+}
+
+variable "network_name" {
+  description = "Docker network name"
+  type        = string
 }
