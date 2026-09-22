@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = 'sxnthosh/python-devops-project'
-        IMAGE_TAG  = "${BUILD_NUMBER}"
-    }
-
     stages {
 
         stage('Checkout') {
@@ -14,86 +9,142 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Validate Docker Compose') {
             steps {
                 sh '''
-                    python3 -m venv .venv-jenkins
-                    . .venv-jenkins/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    pytest -q
+                    docker compose config > /dev/null
+                    echo "Docker Compose configuration is valid"
                 '''
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                    docker build \
-                      -t ${IMAGE_NAME}:${IMAGE_TAG} \
-                      -t ${IMAGE_NAME}:latest \
-                      .
-                '''
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKERHUB_USERNAME',
-                        passwordVariable: 'DOCKERHUB_PASSWORD'
-                    )
-                ]) {
-                    sh '''
-                        echo "$DOCKERHUB_PASSWORD" | docker login \
-                          -u "$DOCKERHUB_USERNAME" \
-                          --password-stdin
-
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${IMAGE_NAME}:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy') {
+        stage('Pull Docker Images') {
             steps {
                 sh '''
                     docker compose pull
-                    docker compose up -d
-                    docker compose exec -T web alembic upgrade head
                 '''
             }
         }
 
-        stage('Health Check') {
+        stage('Deploy Kimai Stack') {
+            steps {
+                sh '''
+                    docker compose up -d
+                '''
+            }
+        }
+
+        stage('Show Container Status') {
+            steps {
+                sh '''
+                    docker compose ps
+                '''
+            }
+        }
+
+        stage('Wait for Kimai') {
             steps {
                 sh '''
                     for i in {1..30}; do
-                        if curl --fail http://localhost:8000/health && \
-                           curl --fail http://localhost:8000/users; then
-                            echo "Application is healthy"
+
+                        if curl --fail --silent --show-error \
+                            --location \
+                            --output /dev/null \
+                            http://127.0.0.1:8000/en/homepage; then
+
+                            echo "Kimai is responding"
                             exit 0
                         fi
-                        echo "Waiting for application..."
-                        sleep 2
+
+                        echo "Waiting for Kimai..."
+                        sleep 5
                     done
 
-                    echo "Application health check failed"
+                    echo "Kimai failed to become ready"
+
+                    docker compose ps
+                    docker compose logs --tail=100 kimai
+
                     exit 1
+                '''
+            }
+        }
+
+        stage('Verify Kimai Health') {
+            steps {
+                sh '''
+                    status=$(docker inspect \
+                        --format='{{.State.Health.Status}}' \
+                        kimai_app)
+
+                    echo "Kimai health status: $status"
+
+                    if [ "$status" != "healthy" ]; then
+                        echo "Kimai container is not healthy"
+                        docker inspect kimai_app
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Verify MariaDB Health') {
+            steps {
+                sh '''
+                    status=$(docker inspect \
+                        --format='{{.State.Health.Status}}' \
+                        devops-mariadb)
+
+                    echo "MariaDB health status: $status"
+
+                    if [ "$status" != "healthy" ]; then
+                        echo "MariaDB container is not healthy"
+                        docker inspect devops-mariadb
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Verify Prometheus') {
+            steps {
+                sh '''
+                    curl --fail --silent --show-error \
+                        http://127.0.0.1:9090/-/healthy
+
+                    echo
+                    echo "Prometheus is healthy"
+                '''
+            }
+        }
+
+        stage('Verify Grafana') {
+            steps {
+                sh '''
+                    curl --fail --silent --show-error \
+                        --location \
+                        --output /dev/null \
+                        http://127.0.0.1:3000/login
+
+                    echo "Grafana is reachable"
+                '''
+            }
+        }
+
+        stage('Deployment Summary') {
+            steps {
+                sh '''
+                    echo "======================================"
+                    echo "Kimai CI/CD deployment successful"
+                    echo "======================================"
+
+                    docker compose ps
                 '''
             }
         }
     }
 
     post {
-        always {
-            sh 'docker logout || true'
-            sh 'rm -rf .venv-jenkins'
-        }
-
         success {
             echo 'CI/CD pipeline completed successfully.'
         }

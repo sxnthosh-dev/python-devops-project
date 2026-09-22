@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -9,123 +9,129 @@ on:
       - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
 
-    services:
-      mariadb:
-        image: mariadb:11
-        env:
-          MARIADB_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          MARIADB_DATABASE: devops_db
-          MARIADB_USER: devuser
-          MARIADB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        ports:
-          - 3307:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+  validate:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
+      - name: Validate Docker Compose
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          docker compose config
 
-      - name: Wait for MariaDB
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: |
-          for i in {1..30}; do
-            if python -c "import pymysql, os; pymysql.connect(host='127.0.0.1', port=3307, user='devuser', password=os.environ['DB_PASSWORD'], database='devops_db')" 2>/dev/null; then
-              echo "MariaDB is ready"
-              break
-            fi
-            echo "Waiting for MariaDB..."
-            sleep 2
-          done
-
-      - name: Run migrations
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3307
-          DB_USER: devuser
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: devops_db
-        run: |
-          alembic upgrade head
-
-      - name: Run tests
-        env:
-          TEST_DB_HOST: 127.0.0.1
-          TEST_DB_PORT: 3307
-          DB_USER: devuser
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: devops_db
-        run: |
-          python -m pytest -v
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/python-devops-project:${{ github.sha }}
   deploy:
-    needs: test
+    name: Deploy Kimai
+    needs: validate
+
+    # Deploy only after a push to main.
+    # Pull requests only run validation.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
     runs-on: self-hosted
 
     steps:
-      - name: Deploy application
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+      - name: Update repository
         run: |
           cd /home/noble_numbat/python-devops-project
-          
-          git pull origin main
 
-          export IMAGE_TAG=${{ github.sha }}
-          export $(grep -v '^#' .env | xargs)
+          git fetch origin main
+          git reset --hard origin/main
+
+      - name: Pull Docker images
+        run: |
+          cd /home/noble_numbat/python-devops-project
 
           docker compose pull
-          docker compose up -d
 
-          echo "Running database migrations..."
-          docker compose exec -T web alembic upgrade head
-
-      - name: Verify deployment
+      - name: Start application stack
         run: |
           cd /home/noble_numbat/python-devops-project
 
+          docker compose up -d
+
+      - name: Show container status
+        run: |
+          cd /home/noble_numbat/python-devops-project
+
+          docker compose ps
+
+      - name: Wait for Kimai
+        run: |
           for i in {1..30}; do
-            if curl --fail http://localhost:8000/health && \
-               curl --fail http://localhost:8000/users; then
-              echo "API and database are ready"
-              break
+
+            if curl --fail --silent --show-error \
+              --location \
+              --output /dev/null \
+              http://127.0.0.1:8000/en/homepage; then
+
+              echo "Kimai is responding"
+              exit 0
             fi
 
-            echo "Waiting for API and database..."
-            sleep 2
+            echo "Waiting for Kimai..."
+            sleep 5
           done
 
-          curl --fail http://localhost:8000/health
-          curl --fail http://localhost:8000/users
-          curl --fail http://localhost:8000/version
+          echo "Kimai failed to become ready"
+          docker compose ps
+          docker compose logs --tail=100 kimai
+          exit 1
+
+      - name: Verify Kimai container health
+        run: |
+          status=$(docker inspect \
+            --format='{{.State.Health.Status}}' \
+            kimai_app)
+
+          echo "Kimai health status: $status"
+
+          if [ "$status" != "healthy" ]; then
+            echo "Kimai container is not healthy"
+            docker inspect kimai_app
+            exit 1
+          fi
+
+      - name: Verify MariaDB health
+        run: |
+          status=$(docker inspect \
+            --format='{{.State.Health.Status}}' \
+            devops-mariadb)
+
+          echo "MariaDB health status: $status"
+
+          if [ "$status" != "healthy" ]; then
+            echo "MariaDB container is not healthy"
+            docker inspect devops-mariadb
+            exit 1
+          fi
+
+      - name: Verify Prometheus
+        run: |
+          curl --fail --silent --show-error \
+            http://127.0.0.1:9090/-/healthy
+
+          echo
+          echo "Prometheus is healthy"
+
+      - name: Verify Grafana
+        run: |
+          curl --fail --silent --show-error \
+            --location \
+            --output /dev/null \
+            http://127.0.0.1:3000/login
+
+          echo "Grafana is reachable"
+
+      - name: Deployment summary
+        run: |
+          cd /home/noble_numbat/python-devops-project
+
+          echo "======================================"
+          echo "Kimai deployment completed successfully"
+          echo "======================================"
+
+          docker compose ps
