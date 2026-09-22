@@ -11,10 +11,19 @@ pipeline {
 
         stage('Prepare Environment') {
             steps {
-                withCredentials([file(credentialsId: 'kimai-env', variable: 'ENV_FILE')]) {
+                withCredentials([
+                    file(credentialsId: 'kimai-env', variable: 'ENV_FILE'),
+                    file(credentialsId: 'grafana-ini', variable: 'GRAFANA_INI')
+                ]) {
                     sh '''
                         cp "$ENV_FILE" .env
                         chmod 600 .env
+
+                        mkdir -p grafana
+                        cp "$GRAFANA_INI" grafana/grafana.ini
+                        chmod 600 grafana/grafana.ini
+
+                        echo "Environment and Grafana configuration prepared"
                     '''
                 }
             }
@@ -48,7 +57,7 @@ pipeline {
         stage('Show Container Status') {
             steps {
                 sh '''
-                    docker compose ps
+                    docker compose -p python-devops-project ps
                 '''
             }
         }
@@ -71,8 +80,12 @@ pipeline {
                     done
 
                     echo "Kimai failed to become ready"
-                    docker compose ps
-                    docker compose logs --tail=100 kimai
+
+                    docker compose -p python-devops-project ps
+
+                    docker compose -p python-devops-project logs \
+                        --tail=100 kimai
+
                     exit 1
                 '''
             }
@@ -146,7 +159,7 @@ pipeline {
                     echo "Kimai CI/CD deployment successful"
                     echo "======================================"
 
-                    docker compose ps
+                    docker compose -p python-devops-project ps
                 '''
             }
         }
@@ -156,6 +169,7 @@ pipeline {
         always {
             sh '''
                 rm -f .env
+                rm -f grafana/grafana.ini
             '''
         }
 
