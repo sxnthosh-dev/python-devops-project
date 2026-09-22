@@ -9,6 +9,17 @@ pipeline {
             }
         }
 
+        stage('Prepare Environment') {
+            steps {
+                withCredentials([file(credentialsId: 'kimai-env', variable: 'ENV_FILE')]) {
+                    sh '''
+                        cp "$ENV_FILE" .env
+                        chmod 600 .env
+                    '''
+                }
+            }
+        }
+
         stage('Validate Docker Compose') {
             steps {
                 sh '''
@@ -46,7 +57,6 @@ pipeline {
             steps {
                 sh '''
                     for i in {1..30}; do
-
                         if curl --fail --silent --show-error \
                             --location \
                             --output /dev/null \
@@ -61,10 +71,8 @@ pipeline {
                     done
 
                     echo "Kimai failed to become ready"
-
                     docker compose ps
                     docker compose logs --tail=100 kimai
-
                     exit 1
                 '''
             }
@@ -145,6 +153,12 @@ pipeline {
     }
 
     post {
+        always {
+            sh '''
+                rm -f .env
+            '''
+        }
+
         success {
             echo 'CI/CD pipeline completed successfully.'
         }
