@@ -22,3 +22,4 @@ grafana/grafana.ini
 terraform/*.tfvars
 terraform/*.tfstate
 terraform/*.tfstate.*
+grafana/grafana.ini
