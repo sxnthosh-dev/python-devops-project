@@ -23,7 +23,7 @@ pipeline {
         stage('Validate Docker Compose') {
             steps {
                 sh '''
-                    docker compose -p kimai-devops config > /dev/null
+                    docker compose -p python-devops-project config > /dev/null
                     echo "Docker Compose configuration is valid"
                 '''
             }
@@ -32,7 +32,7 @@ pipeline {
         stage('Pull Docker Images') {
             steps {
                 sh '''
-                    docker compose -p kimai-devops pull
+                    docker compose -p python-devops-project pull
                 '''
             }
         }
@@ -40,7 +40,7 @@ pipeline {
         stage('Deploy Kimai Stack') {
             steps {
                 sh '''
-                    docker compose -p kimai-devops up -d
+                    docker compose -p python-devops-project up -d
                 '''
             }
         }
