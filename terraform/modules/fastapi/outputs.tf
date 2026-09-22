@@ -1,14 +1,14 @@
 output "container_name" {
-  description = "FastAPI container name"
-  value       = docker_container.fastapi.name
+  description = "Kimai container name"
+  value       = docker_container.kimai.name
 }
 
 output "url" {
-  description = "FastAPI application URL"
-  value       = "http://127.0.0.1:8001"
+  description = "Kimai application URL"
+  value       = "http://127.0.0.1:8002"
 }
 
 output "health_url" {
-  description = "FastAPI health endpoint"
-  value       = "http://127.0.0.1:8001/health"
+  description = "Kimai application health URL"
+  value       = "http://127.0.0.1:8002"
 }

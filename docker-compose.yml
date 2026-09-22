@@ -20,36 +20,29 @@ services:
       timeout: 5s
       retries: 5
 
-  web:
-    image: ${DOCKERHUB_USERNAME}/python-devops-project:${IMAGE_TAG}
-    container_name: fastapi_app
+  kimai:
+    image: kimai/kimai2:stable
+    container_name: kimai_app
     restart: unless-stopped
-    mem_limit: 512m
-    cpus: "1.0"
     security_opt:
       - no-new-privileges:true
-    command: >
-      sh -c "alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
-      - "127.0.0.1:8000:8000"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      - "127.0.0.1:8000:8001"
     environment:
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      DATABASE_URL: "mysql://${KIMAI_DB_USER}:${KIMAI_DB_PASSWORD}@db:3306/${KIMAI_DB_NAME}?charset=utf8mb4&serverVersion=11.2.2-MariaDB"
+      APP_SECRET: "${KIMAI_APP_SECRET}"
+      TRUSTED_HOSTS: "${KIMAI_TRUSTED_HOSTS}"
+      ADMINMAIL: "${KIMAI_ADMIN_EMAIL}"
+      ADMINPASS: "${KIMAI_ADMIN_PASSWORD}"
     depends_on:
       db:
         condition: service_healthy
     networks:
       - internal-network
+    volumes:
+      - kimai_var:/opt/kimai/var
+      - kimai_public:/opt/kimai/public
+
 
   prometheus:
     image: prom/prometheus:v2.51.0
@@ -80,6 +73,19 @@ services:
     restart: unless-stopped
     networks:
       - internal-network
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - internal-network
 
 networks:
   internal-network:
@@ -87,3 +93,5 @@ networks:
 volumes:
   mariadb_data:
   grafana_data:
+  kimai_var:
+  kimai_public:

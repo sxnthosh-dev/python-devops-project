@@ -1,11 +1,11 @@
-output "fastapi_url" {
-  description = "FastAPI application URL"
-  value       = "http://127.0.0.1:8001"
+output "kimai_url" {
+  description = "Kimai application URL"
+  value       = "http://127.0.0.1:8002"
 }
 
-output "fastapi_health_url" {
-  description = "FastAPI health endpoint"
-  value       = "http://127.0.0.1:8001/health"
+output "kimai_health_url" {
+  description = "Kimai application health URL"
+  value       = "http://127.0.0.1:8002"
 }
 
 output "prometheus_url" {
