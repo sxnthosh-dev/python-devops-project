@@ -16,14 +16,26 @@ pipeline {
                     file(credentialsId: 'grafana-ini', variable: 'GRAFANA_INI')
                 ]) {
                     sh '''
+                        set -e
+
+                        # Remove leftovers from previous builds
+                        rm -rf .env
+                        rm -rf grafana/grafana.ini
+
+                        # Inject Kimai environment
                         cp "$ENV_FILE" .env
                         chmod 600 .env
 
+                        # Inject Grafana SMTP configuration
                         mkdir -p grafana
                         cp "$GRAFANA_INI" grafana/grafana.ini
                         chmod 600 grafana/grafana.ini
 
                         echo "Environment and Grafana configuration prepared"
+
+                        # Verify files exist
+                        test -f .env
+                        test -f grafana/grafana.ini
                     '''
                 }
             }
@@ -169,7 +181,7 @@ pipeline {
         always {
             sh '''
                 rm -f .env
-                rm -f grafana/grafana.ini
+                rm -rf grafana/grafana.ini
             '''
         }
 
